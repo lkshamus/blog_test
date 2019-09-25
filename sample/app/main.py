@@ -36,7 +36,6 @@ login_manager.login_view = "login"
 def load_user(user_id):
     return User.query.get(user_id) if user_id else None
 
-
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True)
@@ -81,25 +80,16 @@ class Category(db.Model):
     def __repr__(self):
         return '<Category %r>' % self.name
 
-
-@app.route("/")
-def index():
-    # posts = Post.query.order_by(Post.pub_date.desc())
-    posts = Post.query.all()
-    print("this is the postssssss in def index", posts)
-    return render_template('index.html', posts=posts)
-
 class CreateForm(FlaskForm):
-    print("create form is being hit")
     title = StringField('title', validators=[DataRequired()])
     body = StringField('body', validators=[validators.Length(min=10)])
 
     def validate(self):
         rv = FlaskForm.validate(self)
-        if not rv:
-            return False
-        else:
+        if rv:
             return True
+        else:
+            return False
 
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired()])
@@ -129,6 +119,16 @@ class LoginForm(FlaskForm):
         self.password.errors.append('Invalid email and/or password specified.')
         return False
 
+@app.route("/")
+def index():
+    page = request.args.get('page', 1, type=int)
+    posts = Post.query.order_by(Post.pub_date.desc()).paginate(page,10,False)
+    next_url = url_for('index', page=posts.next_num) \
+        if posts.has_next else None
+    prev_url = url_for('index', page=posts.prev_num) \
+        if posts.has_prev else None
+    return render_template('index.html', posts=posts.items, next_url=next_url, prev_url=prev_url)
+
 
 @app.route('/auth/login/', methods=['GET', 'POST'])
 def login():
@@ -141,13 +141,15 @@ def login():
 
     return render_template('login.html', form=form)
 
+@app.route('/about_me')
+def about_me():
+    return render_template('about.html')
+
 @app.route("/create", methods=['GET', 'POST'])
 def create():
     form = CreateForm()
-    print("does it hit here?", form)
     if form.validate_on_submit():
         post=Post(title=form.title.data, body=form.body.data, category=Category.query.filter_by(name='All').one_or_none())
-        print("HELLLOOOO check me outttttt", post, form.title.data, form.body.data)
         db.session.add(post)
         db.session.commit()
         form.title.data = ''
@@ -169,6 +171,25 @@ def logout():
 def account():
     return render_template('account.html', user=current_user)
 
+@app.route("/archive/<int:month>/<int:year>")
+def archive(month,year):
+    minimum = datetime(year, month, 1)
+    if month == 12:
+        maximum = minimum
+    else:
+        maximum = datetime(year, (month + 1), 1)
+
+    page = request.args.get('page', 1, type=int)
+    posts = Post.query.filter(Post.pub_date > minimum).filter(Post.pub_date <= maximum).order_by(Post.pub_date.desc()).paginate(page,10,False)
+    next_url = url_for('archive', month=month, year=year, page=posts.next_num) \
+        if posts.has_next else None
+    prev_url = url_for('archive', month=month, year=year, page=posts.prev_num) \
+        if posts.has_prev else None
+    return render_template('index.html', posts=posts.items, next_url=next_url, prev_url=prev_url)
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
 
 @app.before_first_request
 def initialize_data():

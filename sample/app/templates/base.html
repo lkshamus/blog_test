@@ -26,9 +26,8 @@
           <a class="nav-link" href="#">New features</a>
           <a class="nav-link" href="#">Press</a>
           <a class="nav-link" href="#">New hires</a>
-          <a class="nav-link" href="#">About</a>
+          <a class="nav-link" href="{{ url_for('about_me') }}">About Me</a>
           <a class="nav-link" href="{{ url_for('create') }}">Create Blog Post</a>
-<!--           <a class="nav-link" href="/create">Create Blog Post</a> -->
 
           {% if current_user.is_authenticated %}
           <div class="nav-item dropdown">

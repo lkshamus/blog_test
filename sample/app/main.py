@@ -26,7 +26,6 @@ if app.debug:
 
 db = SQLAlchemy(app)
 commands.init_app(app, db)
-
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
@@ -35,6 +34,7 @@ login_manager.login_view = "login"
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(user_id) if user_id else None
+
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -80,6 +80,7 @@ class Category(db.Model):
     def __repr__(self):
         return '<Category %r>' % self.name
 
+
 class CreateForm(FlaskForm):
     title = StringField('title', validators=[DataRequired()])
     body = StringField('body', validators=[validators.Length(min=10)])
@@ -90,6 +91,7 @@ class CreateForm(FlaskForm):
             return True
         else:
             return False
+
 
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired()])
@@ -119,15 +121,17 @@ class LoginForm(FlaskForm):
         self.password.errors.append('Invalid email and/or password specified.')
         return False
 
+
 @app.route("/")
 def index():
     page = request.args.get('page', 1, type=int)
-    posts = Post.query.order_by(Post.pub_date.desc()).paginate(page,10,False)
+    posts = Post.query.order_by(Post.pub_date.desc()).paginate(page, 10, False)
     next_url = url_for('index', page=posts.next_num) \
         if posts.has_next else None
     prev_url = url_for('index', page=posts.prev_num) \
         if posts.has_prev else None
-    return render_template('index.html', posts=posts.items, next_url=next_url, prev_url=prev_url)
+    return render_template('index.html', posts=posts.items, next_url=next_url,
+    prev_url=prev_url)
 
 
 @app.route('/auth/login/', methods=['GET', 'POST'])
@@ -141,23 +145,26 @@ def login():
 
     return render_template('login.html', form=form)
 
+
 @app.route('/about_me')
 def about_me():
     return render_template('about.html')
+
 
 @app.route("/create", methods=['GET', 'POST'])
 def create():
     form = CreateForm()
     if form.validate_on_submit():
-        post=Post(title=form.title.data, body=form.body.data, category=Category.query.filter_by(name='All').one_or_none())
+        post = Post(title=form.title.data, body=form.body.data,
+        category=Category.query.filter_by(name='All').one_or_none())
         db.session.add(post)
         db.session.commit()
         form.title.data = ''
         form.body.data = ''
         flash('Blog Post Successfuly Created')
         return redirect(url_for('index'))
-
     return render_template('create.html', form=form)
+
 
 @app.route('/logout/')
 @login_required
@@ -172,24 +179,29 @@ def account():
     return render_template('account.html', user=current_user)
 
 @app.route("/archive/<int:month>/<int:year>")
-def archive(month,year):
-    minimum = datetime(year, month, 1)
+def archive(month, year):
+    minimum_month = datetime(year, month, 1)
     if month == 12:
-        maximum = minimum
+        maximum_month = minimum_month
     else:
-        maximum = datetime(year, (month + 1), 1)
+        maximum_month = datetime(year, (month + 1), 1)
 
     page = request.args.get('page', 1, type=int)
-    posts = Post.query.filter(Post.pub_date > minimum).filter(Post.pub_date <= maximum).order_by(Post.pub_date.desc()).paginate(page,10,False)
+    posts = Post.query.filter(Post.pub_date > minimum_month).filter(
+        Post.pub_date <= maximum_month).order_by(
+            Post.pub_date.desc()).paginate(page, 10, False)
     next_url = url_for('archive', month=month, year=year, page=posts.next_num) \
         if posts.has_next else None
     prev_url = url_for('archive', month=month, year=year, page=posts.prev_num) \
         if posts.has_prev else None
-    return render_template('index.html', posts=posts.items, next_url=next_url, prev_url=prev_url)
+    return render_template('index.html', posts=posts.items, next_url=next_url,
+    prev_url=prev_url)
+
 
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
+
 
 @app.before_first_request
 def initialize_data():
